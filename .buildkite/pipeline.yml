@@ -1,0 +1,10 @@
+steps:
+  - label: "🛠"
+    plugins:
+      golang-cross-compile#v1.0.0:
+        build: "."
+        import: github.com/buildkite/codebuild-run-build
+        targets:
+          - version: 1.10.2
+            goos: linux
+            goarch: amd64
