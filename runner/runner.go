@@ -48,7 +48,7 @@ func (r *Runner) Run() error {
 
 	if len(r.Env) > 0 {
 		for _, env := range r.Env {
-			log.Printf("Setting env %s for build", env.Name, env.Value)
+			log.Printf("Setting env %s for build", env.Name)
 			input.EnvironmentVariablesOverride = append(input.EnvironmentVariablesOverride, &codebuild.EnvironmentVariable{
 				Name:  aws.String(env.Name),
 				Value: aws.String(env.Value),
