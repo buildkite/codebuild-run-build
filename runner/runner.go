@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,11 +14,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/codebuild"
 )
 
+type Env struct {
+	Name  string
+	Value string
+}
+
 type Runner struct {
 	ProjectName    string
 	LogGroupName   string
 	Region         string
-	Env            []string
+	Env            []Env
 	SourceType     string
 	SourceLocation string
 	NoArtifacts    bool
@@ -44,15 +48,10 @@ func (r *Runner) Run() error {
 
 	if len(r.Env) > 0 {
 		for _, env := range r.Env {
-			log.Printf("Setting env %s for this build", env)
-			parts := strings.SplitN(env, "=", 2)
-			if len(parts) != 2 {
-				log.Printf("Encountered invalid env %q", env)
-				continue
-			}
+			log.Printf("Setting env %s for build", env.Name, env.Value)
 			input.EnvironmentVariablesOverride = append(input.EnvironmentVariablesOverride, &codebuild.EnvironmentVariable{
-				Name:  aws.String(parts[0]),
-				Value: aws.String(parts[1]),
+				Name:  aws.String(env.Name),
+				Value: aws.String(env.Value),
 			})
 		}
 	}
