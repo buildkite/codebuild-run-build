@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -111,13 +110,10 @@ func parseEnv(s string) (runner.Env, error) {
 	if len(parts) != 2 {
 		return runner.Env{}, fmt.Errorf("Failed to parse env %q", s)
 	}
-	// parse as json to handle quotes and special chars
-	var marshaled string
-	err := json.Unmarshal([]byte(parts[1]), &marshaled)
-	if err != nil {
-		return runner.Env{}, err
-	}
-	return runner.Env{Name: parts[0], Value: marshaled}, nil
+	parsedString := strings.Trim(parts[1], `"`)
+	parsedString = strings.Replace(parsedString, `\t`, "\t", -1)
+	parsedString = strings.Replace(parsedString, `\n`, "\n", -1)
+	return runner.Env{Name: parts[0], Value: parsedString}, nil
 }
 
 func readEnvFile(fileName string) ([]runner.Env, error) {
