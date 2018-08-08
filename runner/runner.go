@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,10 +16,14 @@ import (
 )
 
 type Runner struct {
-	ProjectName  string
-	LogGroupName string
-	Region       string
-	Config       *aws.Config
+	ProjectName    string
+	LogGroupName   string
+	Region         string
+	Env            []string
+	SourceType     string
+	SourceLocation string
+	NoArtifacts    bool
+	Config         *aws.Config
 }
 
 func New() *Runner {
@@ -32,10 +37,45 @@ func (r *Runner) Run() error {
 	sess := session.Must(session.NewSession(r.Config))
 	svc := codebuild.New(sess)
 
+	input := &codebuild.StartBuildInput{
+		ProjectName:                  aws.String(r.ProjectName),
+		EnvironmentVariablesOverride: []*codebuild.EnvironmentVariable{},
+	}
+
+	if len(r.Env) > 0 {
+		for _, env := range r.Env {
+			log.Printf("Setting env %s for this build", env)
+			parts := strings.SplitN(env, "=", 2)
+			if len(parts) != 2 {
+				log.Printf("Encountered invalid env %q", env)
+				continue
+			}
+			input.EnvironmentVariablesOverride = append(input.EnvironmentVariablesOverride, &codebuild.EnvironmentVariable{
+				Name:  aws.String(parts[0]),
+				Value: aws.String(parts[1]),
+			})
+		}
+	}
+
+	if r.NoArtifacts {
+		log.Printf("Disabling artifacts for this build")
+		input.ArtifactsOverride = &codebuild.ProjectArtifacts{
+			Type: aws.String("NO_ARTIFACTS"),
+		}
+	}
+
+	if r.SourceType != "" {
+		log.Printf("Setting source type of %q for this build", r.SourceType)
+		input.SourceTypeOverride = aws.String(r.SourceType)
+	}
+
+	if r.SourceLocation != "" {
+		log.Printf("Setting source location of %q for this build", r.SourceLocation)
+		input.SourceLocationOverride = aws.String(r.SourceLocation)
+	}
+
 	log.Printf("Creating a build for %s", r.ProjectName)
-	startBuildOutput, err := svc.StartBuild(&codebuild.StartBuildInput{
-		ProjectName: aws.String(r.ProjectName),
-	})
+	startBuildOutput, err := svc.StartBuild(input)
 	if err != nil {
 		return err
 	}
@@ -44,7 +84,6 @@ func (r *Runner) Run() error {
 	defer cancel()
 
 	log.Printf("Build %s started", *startBuildOutput.Build.Id)
-
 	logs, err := waitForLogs(ctx, svc, *startBuildOutput.Build.Id)
 	if err != nil {
 		return err
@@ -70,7 +109,7 @@ func (r *Runner) Run() error {
 		}
 	}()
 
-	log.Printf("Waiting for build to finish")
+	log.Printf("Waiting for build to complete")
 	go func() {
 		build, err := waitForBuildComplete(ctx, svc, *startBuildOutput.Build.Id)
 		if err != nil {
@@ -89,7 +128,7 @@ func (r *Runner) Run() error {
 			return err
 		case build := <-buildComplete:
 			cancel()
-			log.Printf("Build complete")
+			log.Printf("Build finished with status %s", *build.BuildStatus)
 			buildErr := fmt.Errorf("Build finished with status %s", *build.BuildStatus)
 
 			switch *build.BuildStatus {

@@ -28,6 +28,22 @@ func main() {
 			Name:  "project-name, n",
 			Usage: "Project name",
 		},
+		cli.BoolFlag{
+			Name:  "no-artifacts",
+			Usage: "Disable artifacts for this build",
+		},
+		cli.StringFlag{
+			Name:  "source-type-override",
+			Usage: "Override the Source Type for this build",
+		},
+		cli.StringFlag{
+			Name:  "source-location-override",
+			Usage: "Override the Source Location for this build",
+		},
+		cli.StringSliceFlag{
+			Name:  "env, e",
+			Usage: "Additional environment",
+		},
 	}
 
 	app.Action = func(ctx *cli.Context) error {
@@ -39,6 +55,10 @@ func main() {
 
 		r := runner.New()
 		r.ProjectName = ctx.String("project-name")
+		r.Env = ctx.StringSlice("env")
+		r.SourceType = ctx.String("source-type-override")
+		r.SourceLocation = ctx.String("source-location-override")
+		r.NoArtifacts = ctx.Bool("no-artifacts")
 
 		if err := r.Run(); err != nil {
 			if ec, ok := err.(cli.ExitCoder); ok {
