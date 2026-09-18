@@ -19,7 +19,7 @@ var (
 func main() {
 	app := cli.NewApp()
 	app.Name = "codebuild-run-build"
-	app.Usage = "Run a build on CodeBuild and tail the output from Cloudwatch"
+	app.Usage = "Run a build on CodeBuild and tail the output from CloudWatch"
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
